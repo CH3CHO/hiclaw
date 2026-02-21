@@ -99,7 +99,8 @@ To trigger a scan immediately (bypassing the 23-hour guard):
 
 ```bash
 # Delete the last-run timestamp to force a fresh scan
-rm ~/manager-workspace/.session-scan-last-run
+# (~/hiclaw-manager is the default host path; adjust if you chose a different HICLAW_WORKSPACE_DIR)
+rm ~/hiclaw-manager/.session-scan-last-run
 
 docker exec hiclaw-manager bash -c \
   'MANAGER_MATRIX_TOKEN=$(jq -r .channels.matrix.accessToken ~/manager-workspace/openclaw.json) \

@@ -137,11 +137,13 @@ Room: "Worker: Alice"
 
 ### Manager Workspace (local only, host-mountable)
 
-The Manager's own working directory lives locally and is never synced to MinIO.
-Mounted at `/root/manager-workspace` inside the container.
+The Manager's own working directory lives on the host and is bind-mounted into the container. It is never synced to MinIO.
+
+- **Default host path**: `~/hiclaw-manager` (configurable via `HICLAW_WORKSPACE_DIR` at install time)
+- **Container path**: `~/manager-workspace` (`/root/manager-workspace`)
 
 ```
-~/manager-workspace/         # Manager's working directory (host-mountable)
+~/hiclaw-manager/            # Host path (bind-mounted to ~/manager-workspace in container)
 ├── SOUL.md                  # Manager identity (copied from image on first boot)
 ├── AGENTS.md                # Workspace guide
 ├── HEARTBEAT.md             # Heartbeat checklist
