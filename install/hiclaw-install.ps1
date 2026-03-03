@@ -269,6 +269,9 @@ HICLAW_REGISTRATION_TOKEN=$($Config.REGISTRATION_TOKEN)
 # GitHub (optional)
 HICLAW_GITHUB_TOKEN=$($Config.GITHUB_TOKEN)
 
+# Skills Registry (optional, default: https://skills.sh)
+HICLAW_SKILLS_API_URL=$($Config.SKILLS_API_URL)
+
 # Worker image (for direct container creation)
 HICLAW_WORKER_IMAGE=$($Config.WORKER_IMAGE)
 
@@ -946,6 +949,11 @@ function Install-Manager {
     # GitHub Integration
     Write-Log "--- GitHub Integration (optional, press Enter to skip) ---"
     $config.GITHUB_TOKEN = Read-Prompt -VarName "HICLAW_GITHUB_TOKEN" -PromptText "GitHub Personal Access Token (optional)" -Secret -Optional
+
+    # Skills Registry
+    Write-Log ""
+    Write-Log "--- Skills Registry (optional, press Enter for default https://skills.sh) ---"
+    $config.SKILLS_API_URL = Read-Prompt -VarName "HICLAW_SKILLS_API_URL" -PromptText "Skills Registry URL (leave empty for default https://skills.sh)" -Optional
 
     Write-Log ""
 

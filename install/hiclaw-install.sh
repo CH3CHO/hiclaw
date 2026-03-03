@@ -794,6 +794,11 @@ install_manager() {
     log "--- GitHub Integration (optional, press Enter to skip) ---"
     prompt_optional HICLAW_GITHUB_TOKEN "GitHub Personal Access Token (optional)" "true"
 
+    # Optional: Skills Registry URL
+    log ""
+    log "--- Skills Registry (optional, press Enter for default https://skills.sh) ---"
+    prompt_optional HICLAW_SKILLS_API_URL "Skills Registry URL (leave empty for default https://skills.sh)"
+
     log ""
 
     # Data persistence
@@ -870,6 +875,9 @@ HICLAW_REGISTRATION_TOKEN=${HICLAW_REGISTRATION_TOKEN}
 
 # GitHub (optional)
 HICLAW_GITHUB_TOKEN=${HICLAW_GITHUB_TOKEN:-}
+
+# Skills Registry (optional, default: https://skills.sh)
+HICLAW_SKILLS_API_URL=${HICLAW_SKILLS_API_URL:-}
 
 # Worker image (for direct container creation)
 HICLAW_WORKER_IMAGE=${WORKER_IMAGE}

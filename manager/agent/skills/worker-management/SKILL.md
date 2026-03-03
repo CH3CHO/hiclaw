@@ -33,6 +33,13 @@ No need to set defaults - these are always available in the container environmen
 
 **Before creating any Worker, you MUST ask the admin about find-skills configuration.**
 
+> **Note**: If the environment variable `HICLAW_SKILLS_API_URL` is set (configured during Manager installation), it will be used automatically as the default skills registry URL. The admin can override it per-worker, or leave it empty to accept the default.
+
+Check the current default first:
+```bash
+echo "${HICLAW_SKILLS_API_URL:-not set (will use https://skills.sh)}"
+```
+
 Ask the admin:
 
 > **Find-Skills Configuration**
@@ -41,11 +48,13 @@ Ask the admin:
 >
 > **Security Note**: Workers run in completely isolated containers and **cannot access any of admin's personal sensitive data**. You can safely enable this feature.
 >
+> Current default skills registry: `${HICLAW_SKILLS_API_URL:-https://skills.sh}`
+>
 > Please choose:
 > 1. **Enable find-skills** (Recommended) - Worker can search and install skills
 > 2. **Disable** - Worker can only use pre-installed skills from Manager
 >
-> If enabled, do you need to specify a private skill registry URL? (Leave empty to use public https://skills.sh)
+> If enabled, do you want to use a different registry URL than the default? (Leave empty to keep current default)
 
 Wait for admin's response and record:
 - `enable_find_skills`: true/false
