@@ -306,6 +306,25 @@ msg() {
         "port.console_prompt.en") text="Host port for Higress console (8001 inside container)" ;;
         "port.element_prompt.zh") text="Element Web 直接访问主机端口（容器内 8088）" ;;
         "port.element_prompt.en") text="Host port for Element Web direct access (8088 inside container)" ;;
+        # --- Local-only binding ---
+        "port.local_only.title.zh") text="--- 网络访问模式 ---" ;;
+        "port.local_only.title.en") text="--- Network Access Mode ---" ;;
+        "port.local_only.prompt.zh") text="是否仅允许本机访问（端口绑定到 127.0.0.1）？" ;;
+        "port.local_only.prompt.en") text="Bind ports to localhost only (127.0.0.1)?" ;;
+        "port.local_only.hint_yes.zh") text="  仅本机使用，无需开放外部端口（推荐）" ;;
+        "port.local_only.hint_yes.en") text="  Local use only, no external port exposure (recommended)" ;;
+        "port.local_only.hint_no.zh") text="  允许外部访问（局域网 / 公网）" ;;
+        "port.local_only.hint_no.en") text="  Allow external access (LAN / public network)" ;;
+        "port.local_only.choice.zh") text="请选择 [Y/n]" ;;
+        "port.local_only.choice.en") text="Enter choice [Y/n]" ;;
+        "port.local_only.selected_local.zh") text="端口已绑定到 127.0.0.1（仅本机访问）" ;;
+        "port.local_only.selected_local.en") text="Ports bound to 127.0.0.1 (localhost only)" ;;
+        "port.local_only.selected_external.zh") text="端口已绑定到所有网络接口（0.0.0.0）" ;;
+        "port.local_only.selected_external.en") text="Ports bound to all interfaces (0.0.0.0)" ;;
+        "port.local_only.https_hint.zh") text="⚠️  建议在 Higress 控制台配置 TLS 证书并启用 HTTPS，避免明文传输。" ;;
+        "port.local_only.https_hint.en") text="⚠️  It is recommended to configure TLS certificates and enable HTTPS in the Higress Console to avoid plaintext transmission." ;;
+        "port.local_only.https_docs.zh") text="   参考文档: https://higress.ai/docs/latest/user/https/" ;;
+        "port.local_only.https_docs.en") text="   Docs: https://higress.ai/docs/latest/user/https/" ;;
         # --- Domain Configuration ---
         "domain.title.zh") text="--- 域名配置（按回车使用默认值）---" ;;
         "domain.title.en") text="--- Domain Configuration (press Enter for defaults) ---" ;;
@@ -1286,6 +1305,34 @@ install_manager() {
     log ""
 
     # Port Configuration (must come before Domain so MATRIX_DOMAIN default uses the correct port)
+    log "$(msg port.local_only.title)"
+    echo ""
+    echo "  1) $(msg port.local_only.hint_yes)"
+    echo "  2) $(msg port.local_only.hint_no)"
+    echo ""
+    if [ "${HICLAW_NON_INTERACTIVE}" = "1" ]; then
+        HICLAW_LOCAL_ONLY="${HICLAW_LOCAL_ONLY:-1}"
+    elif [ -z "${HICLAW_LOCAL_ONLY+x}" ]; then
+        read -p "$(msg port.local_only.choice) [1]: " _local_choice
+        _local_choice="${_local_choice:-1}"
+        case "${_local_choice}" in
+            2|n|N|no|NO) HICLAW_LOCAL_ONLY="0" ;;
+            *)            HICLAW_LOCAL_ONLY="1" ;;
+        esac
+        unset _local_choice
+    fi
+    export HICLAW_LOCAL_ONLY
+
+    if [ "${HICLAW_LOCAL_ONLY}" = "1" ]; then
+        log "$(msg port.local_only.selected_local)"
+    else
+        log "$(msg port.local_only.selected_external)"
+        echo ""
+        echo -e "\033[33m$(msg port.local_only.https_hint)\033[0m"
+        echo -e "\033[33m$(msg port.local_only.https_docs)\033[0m"
+    fi
+    log ""
+
     log "$(msg port.title)"
     prompt HICLAW_PORT_GATEWAY "$(msg port.gateway_prompt)" "18080"
     prompt HICLAW_PORT_CONSOLE "$(msg port.console_prompt)" "18001"
@@ -1516,6 +1563,12 @@ EOF
 
     # Run Manager container
     log "$(msg install.starting_manager)"
+    # Build port binding args (127.0.0.1 prefix for local-only mode)
+    if [ "${HICLAW_LOCAL_ONLY:-1}" = "1" ]; then
+        _port_prefix="127.0.0.1:"
+    else
+        _port_prefix=""
+    fi
     # shellcheck disable=SC2086
     docker run -d \
         --name hiclaw-manager \
@@ -1526,14 +1579,15 @@ EOF
         ${YOLO_ARGS} \
         ${TZ_ARGS} \
         ${SOCKET_MOUNT_ARGS} \
-        -p "${HICLAW_PORT_GATEWAY}:8080" \
-        -p "${HICLAW_PORT_CONSOLE}:8001" \
-        -p "${HICLAW_PORT_ELEMENT_WEB:-18088}:8088" \
+        -p "${_port_prefix}${HICLAW_PORT_GATEWAY}:8080" \
+        -p "${_port_prefix}${HICLAW_PORT_CONSOLE}:8001" \
+        -p "${_port_prefix}${HICLAW_PORT_ELEMENT_WEB:-18088}:8088" \
         ${DATA_MOUNT_ARGS} \
         ${WORKSPACE_MOUNT_ARGS} \
         ${HOST_SHARE_MOUNT_ARGS} \
         --restart unless-stopped \
         "${MANAGER_IMAGE}"
+    unset _port_prefix
 
     # Wait for Manager agent to be ready
     wait_manager_ready "hiclaw-manager"
@@ -1597,6 +1651,11 @@ EOF
     log ""
     log "$(msg success.tip)"
     log ""
+    if [ "${HICLAW_LOCAL_ONLY:-1}" != "1" ]; then
+        echo -e "\033[33m$(msg port.local_only.https_hint)\033[0m"
+        echo -e "\033[33m$(msg port.local_only.https_docs)\033[0m"
+        log ""
+    fi
     log "$(msg success.config_file "${ENV_FILE}")"
     log "$(msg success.data_volume "${HICLAW_DATA_DIR}")"
     log "$(msg success.workspace "${HICLAW_WORKSPACE_DIR}")"

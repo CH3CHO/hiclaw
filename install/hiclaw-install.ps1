@@ -257,6 +257,14 @@ $script:Messages = @{
     "port.gateway_prompt" = @{ zh = "网关主机端口（容器内 8080）"; en = "Host port for gateway (8080 inside container)" }
     "port.console_prompt" = @{ zh = "Higress 控制台主机端口（容器内 8001）"; en = "Host port for Higress console (8001 inside container)" }
     "port.element_prompt" = @{ zh = "Element Web 直接访问主机端口（容器内 8088）"; en = "Host port for Element Web direct access (8088 inside container)" }
+    "port.local_only.title" = @{ zh = "--- 网络访问模式 ---"; en = "--- Network Access Mode ---" }
+    "port.local_only.hint_yes" = @{ zh = "  仅本机使用，无需开放外部端口（推荐）"; en = "  Local use only, no external port exposure (recommended)" }
+    "port.local_only.hint_no" = @{ zh = "  允许外部访问（局域网 / 公网）"; en = "  Allow external access (LAN / public network)" }
+    "port.local_only.choice" = @{ zh = "请选择 [Y/n]"; en = "Enter choice [Y/n]" }
+    "port.local_only.selected_local" = @{ zh = "端口已绑定到 127.0.0.1（仅本机访问）"; en = "Ports bound to 127.0.0.1 (localhost only)" }
+    "port.local_only.selected_external" = @{ zh = "端口已绑定到所有网络接口（0.0.0.0）"; en = "Ports bound to all interfaces (0.0.0.0)" }
+    "port.local_only.https_hint" = @{ zh = "⚠️  建议在 Higress 控制台配置 TLS 证书并启用 HTTPS，避免明文传输。"; en = "⚠️  It is recommended to configure TLS certificates and enable HTTPS in the Higress Console to avoid plaintext transmission." }
+    "port.local_only.https_docs" = @{ zh = "   参考文档: https://higress.ai/docs/latest/user/https/"; en = "   Docs: https://higress.ai/docs/latest/user/https/" }
 
     # --- Domain Configuration ---
     "domain.title" = @{ zh = "--- 域名配置（按回车使用默认值）---"; en = "--- Domain Configuration (press Enter for defaults) ---" }
@@ -1284,6 +1292,33 @@ function Install-Manager {
 
     Write-Log ""
 
+    # Network Access Mode
+    Write-Log (Get-Msg "port.local_only.title")
+    Write-Host ""
+    Write-Host "  1) $(Get-Msg 'port.local_only.hint_yes')"
+    Write-Host "  2) $(Get-Msg 'port.local_only.hint_no')"
+    Write-Host ""
+    if ($script:HICLAW_NON_INTERACTIVE -eq "1") {
+        $localOnly = if ($env:HICLAW_LOCAL_ONLY) { $env:HICLAW_LOCAL_ONLY } else { "1" }
+    } elseif ($null -ne $env:HICLAW_LOCAL_ONLY) {
+        $localOnly = $env:HICLAW_LOCAL_ONLY
+    } else {
+        $localChoice = Read-Host "$(Get-Msg 'port.local_only.choice') [1]"
+        if (-not $localChoice) { $localChoice = "1" }
+        $localOnly = if ($localChoice -match '^(2|n|N|no|NO)$') { "0" } else { "1" }
+    }
+    $config.LOCAL_ONLY = $localOnly
+
+    if ($localOnly -eq "1") {
+        Write-Log (Get-Msg "port.local_only.selected_local")
+    } else {
+        Write-Log (Get-Msg "port.local_only.selected_external")
+        Write-Host ""
+        Write-Host (Get-Msg "port.local_only.https_hint") -ForegroundColor Yellow
+        Write-Host (Get-Msg "port.local_only.https_docs") -ForegroundColor Yellow
+    }
+    Write-Log ""
+
     # Port Configuration
     Write-Log (Get-Msg "port.title")
     $config.PORT_GATEWAY = Read-Prompt -VarName "HICLAW_PORT_GATEWAY" -PromptText (Get-Msg "port.gateway_prompt") -Default "18080"
@@ -1396,9 +1431,10 @@ function Install-Manager {
     }
 
     # Port mappings
-    $dockerArgs += @("-p", "$($config.PORT_GATEWAY):8080")
-    $dockerArgs += @("-p", "$($config.PORT_CONSOLE):8001")
-    $dockerArgs += @("-p", "$($config.PORT_ELEMENT_WEB):8088")
+    $portPrefix = if ($config.LOCAL_ONLY -eq "1") { "127.0.0.1:" } else { "" }
+    $dockerArgs += @("-p", "${portPrefix}$($config.PORT_GATEWAY):8080")
+    $dockerArgs += @("-p", "${portPrefix}$($config.PORT_CONSOLE):8001")
+    $dockerArgs += @("-p", "${portPrefix}$($config.PORT_ELEMENT_WEB):8088")
 
     # Data mount: Docker volume
     $dockerArgs += @("-v", "$($config.DATA_DIR):/data")
@@ -1556,6 +1592,11 @@ function Install-Manager {
     Write-Log ""
     Write-Log (Get-Msg "success.tip")
     Write-Log ""
+    if ($config.LOCAL_ONLY -ne "1") {
+        Write-Host (Get-Msg "port.local_only.https_hint") -ForegroundColor Yellow
+        Write-Host (Get-Msg "port.local_only.https_docs") -ForegroundColor Yellow
+        Write-Log ""
+    }
     Write-Log (Get-Msg "success.config_file" -f $script:HICLAW_ENV_FILE)
 
     Write-Log (Get-Msg "success.data_volume" -f $config.DATA_DIR)
